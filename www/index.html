@@ -931,7 +931,6 @@ function speak(message) {
     }
 
     const synth = window.speechSynthesis;
-    synth.cancel();
 
     const utterance = new SpeechSynthesisUtterance(
       "تذكير. " + String(message || "")
@@ -942,27 +941,32 @@ function speak(message) {
     utterance.pitch = 1;
     utterance.volume = 1;
 
-    utterance.onend = resolve;
+    let finished = false;
+
+    function finish() {
+      if (finished) return;
+      finished = true;
+      clearTimeout(fallbackTimer);
+      resolve();
+    }
+
+    utterance.onend = finish;
+
     utterance.onerror = event => {
       console.error("خطأ في النطق:", event.error);
-      resolve();
+      finish();
     };
 
-    synth.resume();
-setTimeout(() => {
-  console.log("بدأ تشغيل النطق");
-  synth.speak(utterance);
+    const fallbackTimer = setTimeout(finish, 5000);
 
-  setTimeout(() => {
-    console.log("حالة النطق:", synth.speaking);
-    console.log(
-      "الأصوات المتاحة:",
-      synth.getVoices().map(v => v.lang + " - " + v.name)
-    );
-  }, 2000);
-}, 300);
-
-setTimeout(resolve, 15000);
+    try {
+      synth.cancel();
+      synth.resume();
+      synth.speak(utterance);
+    } catch (error) {
+      console.error("تعذر تشغيل النطق:", error);
+      finish();
+    }
   });
 }
   async function playReminderAlert(task) {
