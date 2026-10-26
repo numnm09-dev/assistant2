@@ -931,7 +931,6 @@ function speak(message) {
     }
 
     const synth = window.speechSynthesis;
-
     const utterance = new SpeechSynthesisUtterance(
       "تذكير. " + String(message || "")
     );
@@ -941,7 +940,19 @@ function speak(message) {
     utterance.pitch = 1;
     utterance.volume = 1;
 
+    const voices = synth.getVoices();
+
+    const arabicVoice =
+      voices.find(v => v.name.includes("Microsoft Salma")) ||
+      voices.find(v => v.lang.toLowerCase() === "ar-eg") ||
+      voices.find(v => v.lang.toLowerCase().startsWith("ar"));
+
+    if (arabicVoice) {
+      utterance.voice = arabicVoice;
+    }
+
     let finished = false;
+    let fallbackTimer;
 
     function finish() {
       if (finished) return;
@@ -957,7 +968,10 @@ function speak(message) {
       finish();
     };
 
-    const fallbackTimer = setTimeout(finish, 5000);
+    fallbackTimer = setTimeout(() => {
+      synth.cancel();
+      finish();
+    }, 10000);
 
     try {
       synth.cancel();
