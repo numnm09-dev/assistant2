@@ -922,33 +922,42 @@ function unlockSpeech() {
 document.addEventListener("click", unlockSpeech);
 document.addEventListener("touchstart", unlockSpeech);
 document.addEventListener("keydown", unlockSpeech);
-
 function speak(message) {
   return new Promise(resolve => {
-    if (!("speechSynthesis" in window)) { resolve(); return; }
-    const synth = window.speechSynthesis;
-    if (!voicesCache.length) loadVoices();
-    if (synth.speaking || synth.pending) synth.cancel();
+    if (!("speechSynthesis" in window)) {
+      console.error("النطق غير مدعوم في المتصفح");
+      resolve();
+      return;
+    }
 
-    // تأخير بسيط بعد cancel() علشان Chrome ما يبوّظش النطق
+    const synth = window.speechSynthesis;
+    synth.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(
+      "تذكير. " + String(message || "")
+    );
+
+    utterance.lang = "ar-EG";
+    utterance.rate = 0.85;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+
+    utterance.onend = resolve;
+    utterance.onerror = event => {
+      console.error("خطأ في النطق:", event.error);
+      resolve();
+    };
+
+    synth.resume();
+
     setTimeout(() => {
-      const utterance = new SpeechSynthesisUtterance("تذكير. " + message);
-      const voice = voicesCache.find(v => v.lang && v.lang.toLowerCase().replace("_", "-").startsWith("ar-eg"))
-                 || voicesCache.find(v => v.lang && v.lang.toLowerCase().startsWith("ar"));
-      if (voice) { utterance.voice = voice; utterance.lang = voice.lang; }
-      else { utterance.lang = "ar-SA"; }
-      utterance.rate = 0.92; utterance.pitch = 1; utterance.volume = 1;
-      let finished = false;
-      const done = () => { if (!finished) { finished = true; resolve(); } };
-      utterance.onend = done; utterance.onerror = done;
-      try { synth.resume(); } catch (e) {}
       synth.speak(utterance);
-      setTimeout(done, Math.max(5000, message.length * 250));
-    }, 150);
+    }, 300);
+
+    setTimeout(resolve, 15000);
   });
 }
-
-async function playReminderAlert(task) {
+  async function playReminderAlert(task) {
   const alertBox = document.getElementById("activeReminderAlert");
   const taskText = document.getElementById("activeReminderTask");
 
