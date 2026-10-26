@@ -949,12 +949,20 @@ function speak(message) {
     };
 
     synth.resume();
+setTimeout(() => {
+  console.log("بدأ تشغيل النطق");
+  synth.speak(utterance);
 
-    setTimeout(() => {
-      synth.speak(utterance);
-    }, 300);
+  setTimeout(() => {
+    console.log("حالة النطق:", synth.speaking);
+    console.log(
+      "الأصوات المتاحة:",
+      synth.getVoices().map(v => v.lang + " - " + v.name)
+    );
+  }, 2000);
+}, 300);
 
-    setTimeout(resolve, 15000);
+setTimeout(resolve, 15000);
   });
 }
   async function playReminderAlert(task) {
