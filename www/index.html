@@ -931,26 +931,6 @@ function speak(message) {
     }
 
     const synth = window.speechSynthesis;
-    const utterance = new SpeechSynthesisUtterance(
-      "تذكير. " + String(message || "")
-    );
-
-    utterance.lang = "ar-EG";
-    utterance.rate = 0.85;
-    utterance.pitch = 1;
-    utterance.volume = 1;
-
-    const voices = synth.getVoices();
-
-    const arabicVoice =
-      voices.find(v => v.name.includes("Microsoft Salma")) ||
-      voices.find(v => v.lang.toLowerCase() === "ar-eg") ||
-      voices.find(v => v.lang.toLowerCase().startsWith("ar"));
-
-    if (arabicVoice) {
-      utterance.voice = arabicVoice;
-    }
-
     let finished = false;
     let fallbackTimer;
 
@@ -961,25 +941,64 @@ function speak(message) {
       resolve();
     }
 
-    utterance.onend = finish;
+    function startSpeaking() {
+      if (finished) return;
 
-    utterance.onerror = event => {
-      console.error("خطأ في النطق:", event.error);
-      finish();
-    };
+      try {
+        const utterance = new SpeechSynthesisUtterance(
+          "تذكير. " + String(message || "")
+        );
+
+        utterance.lang = "ar-EG";
+        utterance.rate = 0.85;
+        utterance.pitch = 1;
+        utterance.volume = 1;
+
+        const voices = synth.getVoices();
+
+        const arabicVoice =
+          voices.find(v => v.name.includes("Microsoft Salma")) ||
+          voices.find(v => v.lang.toLowerCase() === "ar-eg") ||
+          voices.find(v => v.lang.toLowerCase().startsWith("ar"));
+
+        if (arabicVoice) {
+          utterance.voice = arabicVoice;
+        }
+
+        utterance.onend = finish;
+
+        utterance.onerror = event => {
+          console.error("خطأ في النطق:", event.error);
+          finish();
+        };
+
+        synth.cancel();
+        synth.resume();
+        synth.speak(utterance);
+      } catch (error) {
+        console.error("تعذر تشغيل النطق:", error);
+        finish();
+      }
+    }
 
     fallbackTimer = setTimeout(() => {
       synth.cancel();
       finish();
-    }, 10000);
+    }, 15000);
 
-    try {
-      synth.cancel();
-      synth.resume();
-      synth.speak(utterance);
-    } catch (error) {
-      console.error("تعذر تشغيل النطق:", error);
-      finish();
+    if (synth.getVoices().length > 0) {
+      startSpeaking();
+    } else {
+      synth.onvoiceschanged = function () {
+        synth.onvoiceschanged = null;
+        startSpeaking();
+      };
+
+      synth.getVoices();
+
+      setTimeout(() => {
+        if (!finished) startSpeaking();
+      }, 1000);
     }
   });
 }
